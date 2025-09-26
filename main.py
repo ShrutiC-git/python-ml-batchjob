@@ -1,6 +1,7 @@
 import os, pika, json, csv, joblib
 import pandas as pd
 from sklearn.linear_model import LogisticRegression
+from urllib.parse import quote
 
 RABBITMQ_HOST = os.getenv("RABBITMQ_HOST", "rabbitmq.messaging.svc.cluster.local")
 RABBITMQ_USER = os.getenv("RABBITMQ_USER", "guest")
@@ -12,10 +13,12 @@ def consume_and_train():
     events = []
     connection = None
     try:
-        credentials = pika.PlainCredentials(RABBITMQ_USER, RABBITMQ_PASSWORD)
-        connection = pika.BlockingConnection(
-            pika.ConnectionParameters(host=RABBITMQ_HOST, credentials=credentials)
-        )
+        encoded_user = quote(RABBITMQ_USER)
+        encoded_password = quote(RABBITMQ_PASSWORD)
+        url = f"amqp://{encoded_user}:{encoded_password}@{RABBITMQ_HOST}:5672/"
+        print(f"Connecting to {url}")  # log for debugging
+
+        connection = pika.BlockingConnection(pika.URLParameters(url))
         channel = connection.channel()
         channel.queue_declare(queue='checkout.events', durable=True)
 
