@@ -1,0 +1,88 @@
+name: Build and deploy K8s Batchjob
+
+on: 
+  push: 
+    branches: 
+      - main
+
+jobs: 
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    environment: dev
+
+    env: 
+      APP_NAME: ${{ vars.APP_NAME }}
+      DOCKER_IMAGE: ${{ vars.DOCKER_IMAGE }}
+      GITOPS_REPO: ${{ vars.GITOPS_REPO }}
+    
+    steps: 
+    - name: Checkout source code
+      uses: actions/checkout@v4
+
+    - name: Login to Docker Hub
+      uses: docker/login-action@v2
+      with: 
+        username: ${{ secrets.DOCKERHUB_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_PASSWORD }}
+    
+    - name: Build and push Docker image 
+      run: | 
+        IMAGE=${DOCKER_IMAGE}:${GITHUB_SHA}
+        docker build -t $IMAGE .
+        docker push $IMAGE
+        echo "IMAGE=$IMAGE" >> $GITHUB_ENV
+    
+    - name: Checkout GitOps repo 
+      uses: actions/checkout@v4
+      with: 
+        repository: ${{ env.GITOPS_REPO }}
+        token: ${{ secrets.GITOPS_REPO_TOKEN }}
+        path: gitops
+    
+    - name: Scaffold or Update Workload
+      run: |
+        BASE="gitops/workloads/jobs/${APP_NAME}"
+        if [ ! -d "$BASE" ]; then
+          echo "Scaffolding new workload for ${APP_NAME} as directory '$BASE' does not exist."
+          mkdir -p $BASE
+          cp -v gitops/templates/job/* "$BASE"/
+        else 
+          echo "Workload directory '$BASE' already exists. Overriding with template files."
+          # Remove the existing directory and its contents
+          rm -rf "$BASE" 
+          mkdir -p $BASE
+          cp -v gitops/templates/job/* "$BASE"/
+        fi
+
+        # Always run sed to ensure name and port are synchronized with env vars.
+        echo "Updating placeholders in YAML files..."
+        sed -i "s#__NAME__#${APP_NAME}#g" "$BASE"/*.yaml
+      
+    - name: Install Kustomize
+      run: |
+        echo "Installing Kustomize..."
+        curl -s "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh"  | bash
+        sudo mv kustomize /usr/local/bin/
+        echo "Kustomize installed to $(which kustomize)"
+
+    - name: Update image with Kustomize
+      run: |
+        KUSTOMIZE_DIR="gitops/workloads/jobs/${APP_NAME}"
+        if [ -d "$KUSTOMIZE_DIR" ]; then
+          echo "Updating image tag in $KUSTOMIZE_DIR..."
+          cd "$KUSTOMIZE_DIR"
+          kustomize edit set image placeholder=${IMAGE}
+        else
+          echo "Error: Kustomize directory '$KUSTOMIZE_DIR' not found. Skipping image update."
+          exit 1
+        fi 
+    
+    - name: Commit and push to GitOps repo 
+      run: |
+        cd gitops
+        git config user.name "github-actions"
+        git config user.email "github-actions@github.com"
+        git add .
+        git commit -m "Deploy job ${APP_NAME} image ${IMAGE}" || echo "No changes"
+        git pull origin main --rebase # Pull latest changes before pushing
+        git push origin main
