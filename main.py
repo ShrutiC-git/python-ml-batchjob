@@ -19,7 +19,7 @@ def consume_and_train():
                 break
             
             event = json.loads(body)
-            # Ensure amount is a number for correct processing later
+            # We will be sending amount as a number to our query
             event['amount'] = float(event.get('amount', 0.0))
             events.append(event)
             channel.basic_ack(method_frame.delivery_tag) # Acknowledge message
