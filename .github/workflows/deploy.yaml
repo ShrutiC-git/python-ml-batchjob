@@ -58,12 +58,12 @@ jobs:
         echo "Updating placeholders in YAML files..."
         sed -i "s#__NAME__#${APP_NAME}#g" "$BASE"/*.yaml
       
-    - name: Install Kustomize
-      run: |
-        echo "Installing Kustomize..."
-        curl -s "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh"  | bash
-        sudo mv kustomize /usr/local/bin/
-        echo "Kustomize installed to $(which kustomize)"
+    # - name: Install Kustomize
+    #   run: |
+    #     echo "Installing Kustomize..."
+    #     curl -s "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh"  | bash
+    #     sudo mv kustomize /usr/local/bin/
+    #     echo "Kustomize installed to $(which kustomize)"
 
     - name: Update image with Kustomize
       run: |
