@@ -3,6 +3,8 @@ import pandas as pd
 from sklearn.linear_model import LogisticRegression
 
 RABBITMQ_HOST = os.getenv("RABBITMQ_HOST", "rabbitmq.messaging.svc.cluster.local")
+RABBITMQ_USER = os.getenv("RABBITMQ_USER", "guest")
+RABBITMQ_PASSWORD = os.getenv("RABBITMQ_PASSWORD", "guest")
 ARTIFACT_PATH = "/artifacts/model.pkl"
 DATA_PATH = "/artifacts/data.csv"
 
@@ -10,7 +12,10 @@ def consume_and_train():
     events = []
     connection = None
     try:
-        connection = pika.BlockingConnection(pika.ConnectionParameters(host=RABBITMQ_HOST))
+        credentials = pika.PlainCredentials(RABBITMQ_USER, RABBITMQ_PASSWORD)
+        connection = pika.BlockingConnection(
+            pika.ConnectionParameters(host=RABBITMQ_HOST, credentials=credentials)
+        )
         channel = connection.channel()
         channel.queue_declare(queue='checkout.events', durable=True)
 
