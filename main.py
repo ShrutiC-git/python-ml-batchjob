@@ -28,7 +28,7 @@ def consume_and_train():
         user_enc = quote_plus(RABBITMQ_USER)
         password_enc = quote_plus(RABBITMQ_PASSWORD)
         url = f"amqp://{user_enc}:{password_enc}@{RABBITMQ_HOST}:5672/"
-        print(f"Connecting to {url}")  # log for debugging
+        print(f"Connecting to: {url}")  # log for debugging
 
         connection = pika.BlockingConnection(pika.URLParameters(url))
         channel = connection.channel()
