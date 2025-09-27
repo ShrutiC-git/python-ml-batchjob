@@ -2,3 +2,4 @@ pika
 pandas
 scikit-learn
 joblib
+minio
