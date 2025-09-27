@@ -61,7 +61,7 @@ def consume_and_train():
     df = pd.read_csv(DATA_PATH)
     df['amount'] = pd.to_numeric(df['amount'], errors='coerce').fillna(0)
     X = df[["amount"]]
-    y = (df["amount"] > 1000).astype(int) # Fake threshold for fraud
+    y = (df["amount"] > 2000).astype(int) # Fake threshold for fraud
     model = LogisticRegression().fit(X,y)
     
     # Ensure bucket exists
